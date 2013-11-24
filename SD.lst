@@ -1,0 +1,341 @@
+C51 COMPILER V9.00   SD                                                                    08/25/2013 08:37:31 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE SD
+OBJECT MODULE PLACED IN .\SD.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\C51\BIN\C51.EXE ..\¡¾¸ßÄÜ¡¿60s2³£¼û¹¦ÄÜµÄ¶¥¼¶·â×°\SD.c BROWSE INCDIR(..
+                    -\¡¾¸ßÄÜ¡¿60s2³£¼û¹¦ÄÜµÄ¶¥¼¶·â×°) DEBUG OBJECTEXTEND PRINT(.\SD.lst) OBJECT(.\SD.obj)
+
+line level    source
+
+   1          #include "SD.h"
+   2          #include "comm.h"
+   3          #include "serial.h"
+   4          
+   5          //¶ÁÐ´Ò»¸ö×Ö½Ú
+   6          static unsigned char SD_WriteByte(unsigned char dat);
+   7          //sd¿¨Ð´ÃüÁî
+   8          static unsigned char SD_SendCommand(unsigned char cmd, unsigned long arg);
+   9          
+  10          //------------------------------------------------------------
+  11          //ÄÚ²¿²Ù×÷º¯Êý
+  12          //------------------------------------------------------------
+  13          
+  14          unsigned char SD_WriteByte(unsigned char dat)
+  15          {
+  16   1              unsigned char i;
+  17   1      
+  18   1              for (i = 0; i < 8; i++)
+  19   1              {
+  20   2                      SD_CLK = 0;
+  21   2      
+  22   2                      if (dat & 0x80)
+  23   2                              SD_DI = 1;
+  24   2                      else
+  25   2                              SD_DI = 0;
+  26   2      
+  27   2                      dat <<= 1;
+  28   2      
+  29   2                      if (SD_DO)
+  30   2                              dat |= 0x01;
+  31   2                      else
+  32   2                              dat &= 0xfe;
+  33   2      
+  34   2                      SD_CLK = 1;
+  35   2              }
+  36   1      
+  37   1              return dat;
+  38   1      }
+  39          
+  40          unsigned char SD_SendCommand(unsigned char cmd, unsigned long arg)
+  41          {
+  42   1              unsigned char result;
+  43   1              unsigned char retry;
+  44   1              
+  45   1              //·¢6¸ö0xff,ÑÓ³ÙÒ»¶ÎÊ±¼ä
+  46   1              //SD_WriteByte(0xff);
+  47   1              //SD_WriteByte(0xff);
+  48   1              //SD_WriteByte(0xff);
+  49   1              //SD_WriteByte(0xff);
+  50   1              //SD_WriteByte(0xff);
+  51   1              SD_WriteByte(0xff);
+  52   1      
+  53   1              SD_ENABLE(); //Ê¹ÄÜSD¿¨
+  54   1              
+C51 COMPILER V9.00   SD                                                                    08/25/2013 08:37:31 PAGE 2   
+
+  55   1              //Ð´ÈëÃüÁîºÍ²ÎÊý
+  56   1              SD_WriteByte(cmd | 0x40);
+  57   1              SD_WriteByte(arg >> 24);
+  58   1              SD_WriteByte(arg >> 16);
+  59   1              SD_WriteByte(arg >> 8);
+  60   1              SD_WriteByte(arg);
+  61   1              //×îºóÒ»Î»ÊÇ1,¸ß7Î»ÊÇCRC
+  62   1              //Ö»ÓÐidleÃüÁî½«Ä£Ê½´ÓSD×ª»»³ÉSPIÊ±²ÅÓÐÐ§
+  63   1              //Ö®ºóCRC½«±»ºöÂÔ
+  64   1              SD_WriteByte(0x95);
+  65   1              
+  66   1              //µÈ´ýÏìÓ¦
+  67   1              retry = 0;
+  68   1              while ((result = SD_WriteByte(0xff)) == 0xff)
+  69   1              {
+  70   2                      retry++;
+  71   2                      //³¬Ê±ÍË³ö
+  72   2                      if (retry > TIME_OUT)
+  73   2                              break;
+  74   2              }
+  75   1      
+  76   1              SD_DISABLE(); //½ûÖ¹SD¿¨
+  77   1      
+  78   1              return result; //·µ»Ø×´Ì¬Öµ
+  79   1      }
+  80          
+  81          //------------------------------------------------------------
+  82          //Íâ²¿²Ù×÷º¯Êý
+  83          //------------------------------------------------------------
+  84          unsigned char SD_Init(void)
+  85          {
+  86   1              unsigned char result;
+  87   1              unsigned char retry;
+  88   1              unsigned char i;
+  89   1              
+  90   1              SD_DISABLE(); //½ûÖ¹SD¿¨
+  91   1      
+  92   1              //·¢ËÍ100¸ö0xff,ÑÓ³ÙÒ»¶ÎÊ±¼ä
+  93   1              for(i = 0; i < 100; i++)
+  94   1                      SD_WriteByte(0xff);
+  95   1      
+  96   1              //·¢idleÃüÁî
+  97   1              retry = 0;
+  98   1              do
+  99   1              {
+ 100   2                      result = SD_SendCommand(0, 0); //·¢idleÃüÁî
+ 101   2                      retry++;
+ 102   2                      //³¬Ê±ÍË³ö
+ 103   2                      if (retry > TIME_OUT)
+ 104   2                              return SD_NO;
+ 105   2              } while (result != 0x01); //Èç¹û²»Îª0x01ÔòÑ­»·
+ 106   1              retry = 0;
+ 107   1              do
+ 108   1              {
+ 109   2                      result = SD_SendCommand(8, 0);
+ 110   2              }while(retry++<20); 
+ 111   1              retry = 0;
+ 112   1              do
+ 113   1              {
+ 114   2      
+ 115   2                      result = SD_SendCommand(55, 0); 
+ 116   2                      result = SD_SendCommand(41, 0); 
+C51 COMPILER V9.00   SD                                                                    08/25/2013 08:37:31 PAGE 3   
+
+ 117   2              }while(retry++<20); 
+ 118   1      
+ 119   1              do
+ 120   1              {
+ 121   2                      result = SD_SendCommand(1, 0); //·¢activeÃüÁî
+ 122   2                      retry++;
+ 123   2                      //³¬Ê±ÍË³ö
+ 124   2                      if (retry > TIME_OUT)
+ 125   2                              return SD_NO;
+ 126   2              } while (result != 0x00); //Èç¹û²»Îª0x00ÔòÑ­»·
+ 127   1      
+ 128   1              result = SD_SendCommand(59, 0); //¹ØCRC
+ 129   1              result = SD_SendCommand(16, 512); //ÉèÉÈÇø´óÐ¡512
+ 130   1      
+ 131   1              return SD_OK; //Õý³£·µ»Ø
+ 132   1      }
+ 133          
+ 134          unsigned char SD_ReadBlock(unsigned long sector, unsigned char *buffer,unsigned int begin,unsigned int len
+             -gth)
+ 135          {
+ 136   1              unsigned char result;
+ 137   1              unsigned char retry;
+ 138   1              unsigned short i;
+ 139   1      
+ 140   1              retry = 0;
+ 141   1              do
+ 142   1              {
+ 143   2                      result = SD_SendCommand(17, sector << 9); //·¢¶ÁÃüÁî
+ 144   2                      retry++;
+ 145   2                      //³¬Ê±ÍË³ö
+ 146   2                      if (retry > TIME_OUT)
+ 147   2                              return SD_NO;
+ 148   2              } while (result);       
+ 149   1      
+ 150   1      
+ 151   1              SD_ENABLE(); //Ê¹ÄÜSD¿¨
+ 152   1      
+ 153   1              //µÈÊý¾ÝµÄ¿ªÊ¼
+ 154   1              while (SD_WriteByte(0xff) != 0xfe) ; //if ((retry++) > 50) {SD_DISABLE();return SD_NO;} //¼ÓÉÏ¿ÉÒÔ·ÀÖ¹ËÀË
+             -ø
+ 155   1              //¿Õ¶Á
+ 156   1              for (i = 0; i < begin; i++)
+ 157   1                      SD_WriteByte(0xff);
+ 158   1              //¶Álength¸ö×Ö½Ú
+ 159   1              for (i = 0; i < length; i++)
+ 160   1                      buffer[i] = SD_WriteByte(0xff);
+ 161   1              for (i = 0; i < 512-begin-length; i++)
+ 162   1                      SD_WriteByte(0xff);
+ 163   1      
+ 164   1              //Î±CRC
+ 165   1              SD_WriteByte(0xff);
+ 166   1              SD_WriteByte(0xff);
+ 167   1              
+ 168   1              SD_DISABLE(); //½ûÖ¹SD¿¨
+ 169   1      
+ 170   1              return SD_OK; //Õý³£·µ»Ø
+ 171   1      }
+ 172          
+ 173          unsigned char SD_WriteBlock(unsigned long sector, unsigned char *buffer)
+ 174          {
+ 175   1              unsigned char result;
+ 176   1              unsigned char retry;
+C51 COMPILER V9.00   SD                                                                    08/25/2013 08:37:31 PAGE 4   
+
+ 177   1              unsigned short i;
+ 178   1      
+ 179   1              retry = 0;
+ 180   1              do
+ 181   1              {
+ 182   2                      result = SD_SendCommand(24, sector << 9); //·¢Ð´ÃüÁî
+ 183   2                      retry++;
+ 184   2                      //³¬Ê±ÍË³ö
+ 185   2                      if (retry > TIME_OUT)
+ 186   2                              return SD_NO;
+ 187   2              } while (result);       
+ 188   1      
+ 189   1              SD_ENABLE(); //Ê¹ÄÜSD¿¨
+ 190   1              
+ 191   1              //·¢6¸ö0xff
+ 192   1              //SD_WriteByte(0xff);
+ 193   1              //SD_WriteByte(0xff);
+ 194   1              //SD_WriteByte(0xff);
+ 195   1              //SD_WriteByte(0xff);
+ 196   1              //SD_WriteByte(0xff);
+ 197   1              SD_WriteByte(0xff);
+ 198   1      
+ 199   1              SD_WriteByte(0xfe); //·¢¿ªÊ¼·û
+ 200   1              
+ 201   1              //Ð´512×Ö½Ú
+ 202   1              for(i = 0; i < 512; i++)
+ 203   1                      SD_WriteByte(buffer[i]);
+ 204   1              
+ 205   1              //Î±CRC
+ 206   1              SD_WriteByte(0xff);
+ 207   1              SD_WriteByte(0xff);
+ 208   1              
+ 209   1              //ÅÐ¶ÏÊÇ·ñÐ´³É¹¦
+ 210   1              result = SD_WriteByte(0xff);
+ 211   1              if( (result & 0x1f) != 0x05)
+ 212   1              {
+ 213   2                      SD_DISABLE(); //½ûÖ¹SD¿¨
+ 214   2                      return SD_NO;
+ 215   2              }
+ 216   1      
+ 217   1              //µÈ´ý²Ù×÷Íê
+ 218   1              while (!SD_WriteByte(0xff)) ; //if ((retry++) > 50) {SD_DISABLE();return SD_NO;} //¼ÓÉÏ¿ÉÒÔ·ÀÖ¹ËÀËø
+ 219   1      
+ 220   1              SD_DISABLE(); //½ûÖ¹SD¿¨
+ 221   1      
+ 222   1              return SD_OK; //Õý³£·µ»Ø
+ 223   1      }
+ 224          
+ 225          unsigned char SD_ReadCapacity(unsigned long *capacity)
+ 226          {
+ 227   1              unsigned char csd[16];
+ 228   1              unsigned char result;
+ 229   1              unsigned short i;
+ 230   1      
+ 231   1              unsigned short csize;
+ 232   1              
+ 233   1              result = SD_SendCommand(9, 0); //·¢¶ÁCSD¼Ä´æÆ÷ÃüÁî
+ 234   1      
+ 235   1              //Èç¹û·¢ËÍÃüÁîÊ§°ÜÔò·µ»Ø
+ 236   1              if (result)
+ 237   1                      return SD_NO;
+ 238   1      
+C51 COMPILER V9.00   SD                                                                    08/25/2013 08:37:31 PAGE 5   
+
+ 239   1              SD_ENABLE(); //Ê¹ÄÜSD¿¨
+ 240   1      
+ 241   1              //µÈÊý¾ÝµÄ¿ªÊ¼
+ 242   1              while (SD_WriteByte(0xff) != 0xfe) ; //if ((retry++) > 50) {SD_DISABLE();return SD_NO;} //¼ÓÉÏ¿ÉÒÔ·ÀÖ¹ËÀË
+             -ø
+ 243   1      
+ 244   1              for(i = 0; i < 16; i++)
+ 245   1                      csd[i] = SD_WriteByte(0xff);
+ 246   1      
+ 247   1              //Î±CRC
+ 248   1              SD_WriteByte(0xff);
+ 249   1              SD_WriteByte(0xff);
+ 250   1              
+ 251   1              SD_DISABLE();  //½ûÖ¹SD¿¨
+ 252   1      
+ 253   1              //¼ÆËãSD¿¨ÈÝÁ¿
+ 254   1              i = csd[0] >> 6;
+ 255   1      
+ 256   1              //CSD ver 1.XX
+ 257   1              if (i == 0)
+ 258   1              {
+ 259   2                      i = (csd[5] & 15) + ((csd[10] & 128) >> 7) + ((csd[9] & 3) << 1) + 2;
+ 260   2                      csize = (csd[8] >> 6) + ((unsigned short)csd[7] << 2) + ((unsigned short)(csd[6] & 3) << 10) + 1;
+ 261   2                      *capacity = (unsigned long)csize << (i - 9);
+ 262   2              }
+ 263   1      
+ 264   1              //CSD ver 2.00
+ 265   1              if (i == 1)
+ 266   1              {
+ 267   2                      csize = csd[9] + ((unsigned short)csd[8] << 8) + 1;
+ 268   2                      *capacity = (unsigned long)csize << 10;
+ 269   2              }
+ 270   1      
+ 271   1              return SD_OK;
+ 272   1      }
+ 273          //uchar xdata SDbuffer[512];
+ 274          /*
+ 275          void main(){
+ 276                  uint i;
+ 277                  uchar sta;
+ 278                  ulong cap;
+ 279                  Serial_Init();
+ 280                  sta=SD_Init();
+ 281                  for(i=0;i<512;i++){
+ 282                          buffer[i]=i;
+ 283                  }
+ 284                  for(i=1;i<10000;i++){
+ 285                          sta=SD_WriteBlock(i+233,buffer);
+ 286                  //      send_str("Write:");
+ 287                  //      send_uint(i);
+ 288                  //      send_ln();
+ 289                  if(i%100==1)_send_value(i);
+ 290                  }
+ 291          
+ 292                  send_str("Read:");
+ 293                  _send_value(sta);
+ 294                  delay(200);
+ 295                  sta=SD_ReadBlock(0,buffer);
+ 296                  _send_value(sta);
+ 297                  delay(200);
+ 298                  for(i=0;i<512;i++){
+ 299                          _send_value(i);
+C51 COMPILER V9.00   SD                                                                    08/25/2013 08:37:31 PAGE 6   
+
+ 300                          _send_value(buffer[i]);
+ 301                  }
+ 302          
+ 303                  }
+ 304          */
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    874    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      47
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

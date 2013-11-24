@@ -1,0 +1,165 @@
+C51 COMPILER V9.00   MAIN                                                                  08/25/2013 12:48:37 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\C51\BIN\C51.EXE main.c BROWSE INCDIR(..\【高能】60s2常见功能的顶级封装)
+                    - DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include "comm.h"
+   2          #include"lcd12864.h"
+   3          #include "SD.h"
+   4          #include "serial.h"
+   5          
+   6          //经过多方改进，做成了动画播放器。
+   7          //将图片以128*64 黑白bmp格式顺序存储在一个文件夹内，放在SD卡根目录下。
+   8          //使用1.hex初始化sd卡。
+   9          //然后使用本程序。
+  10          //野生字幕君敬上
+  11          #include "keyBoard.h"
+  12          //#include "ClowCards.h"
+  13          //注意在使用菜单时一定要将二维数组的长宽对齐。
+  14          //否则呵呵
+  15          uchar xdata SDPic[1024];
+  16          //uchar xdata SDData[512];
+  17          //uchar xdata SDData2[512];
+  18          
+  19          uchar xdata name[5]="Hehe";
+  20          uchar xdata age[5]="100";
+  21          uchar xdata clow_card=5;
+  22          
+  23          void ReadBMP(ulong SD_Sector){
+  24   1              uint x=0;
+  25   1              uint y=0;
+  26   1      
+  27   1              //SD_ReadBlock(SD_Sector,SDPic,0x003e,0x01c2);
+  28   1              if(Lcd_SubLineEn){
+  29   2                      for(x=0;x<256;x++){
+  30   3                              SDPic[x]=0;
+  31   3                      }
+  32   2              //      SD_ReadBlock(SD_Sector,SDPic,0x003e,0x01c2);
+  33   2                      SD_ReadBlock(SD_Sector,SDPic+0x0100,0x013e,0x00c2);
+  34   2              }else{
+  35   2                      SD_ReadBlock(SD_Sector,SDPic,0x003e,0x01c2);
+  36   2              }       
+  37   1      /*      
+  38   1              //第一扇区
+  39   1              for(i=0x0000;i<0x0200-0x003e;i++){
+  40   1                      //_send_value(i);       
+  41   1                      
+  42   1                      x=(i)%16;
+  43   1                      y=(i)/16;
+  44   1                      SDPic[y][x]=~SDData[i+0x003e];
+  45   1                      send_uint(SDPic[y][x]);
+  46   1                      send_tab();send_uint(i+0x003e);send_tab();
+  47   1                      _send_value((SDData[i+0x003e]));
+  48   1                      
+  49   1              }
+  50   1      */
+  51   1              SD_Sector+=1;
+  52   1              SD_ReadBlock(SD_Sector,SDPic+0x01c2,0x0000,0x0200);
+  53   1      /*      
+  54   1              //第二扇区
+C51 COMPILER V9.00   MAIN                                                                  08/25/2013 12:48:37 PAGE 2   
+
+  55   1              for(i=0x0200-0x003e;i<0x0400-0x003e;i++){       
+  56   1                      //_send_value(i);
+  57   1                      x=(i)%16;
+  58   1                      y=(i)/16;
+  59   1                      SDPic[y][x]=~SDData[i-(0x0200-0x003e)];
+  60   1                      send_uint(SDPic[y][x]);
+  61   1                      send_tab();send_uint(i-(0x0200-0x003e));send_tab();
+  62   1                      _send_value((SDData[i-(0x0200-0x003e)]));
+  63   1                      
+  64   1              }
+  65   1              */
+  66   1              SD_Sector+=1;
+  67   1      
+  68   1              SD_ReadBlock(SD_Sector,SDPic+0x03c2,0x0000,0x003e);
+  69   1              //第三扇区
+  70   1      /*
+  71   1              for(i=0x0400-0x003e;i<0x0400;i++){      
+  72   1                      //_send_value(i);
+  73   1                      x=(i)%16;
+  74   1                      y=(i)/16;
+  75   1                      SDPic[y][x]=~SDData[i-(0x0400-0x003e)];
+  76   1                      send_uint(SDPic[y][x]);
+  77   1                      send_tab();send_uint(i-(0x0400-0x003e));send_tab();
+  78   1                      _send_value((SDData[i-(0x0400-0x003e)]));
+  79   1                      
+  80   1              }
+  81   1      */
+  82   1      }
+  83          void main(){
+  84   1              uint i;
+  85   1              uchar *p1;
+  86   1              ulong SD_Sector;
+  87   1              Lcd_Init();
+  88   1      
+  89   1              delay(100);     
+  90   1              Serial_Init();
+  91   1      //      _send_value(clow_cards[0]);
+  92   1              //      send_uint(0);
+  93   1              p1="Hehe Designed";
+  94   1              Lcd_MessageBox("A:百变小樱","B:进击的巨人");
+  95   1              if(!Lcd_Dialog("选择动画片：","  A  ","  B  ")){
+  96   2                      SD_Sector=336320;
+  97   2              }else{
+  98   2                      SD_Sector=576;
+  99   2              }
+ 100   1              i=SD_Init();
+ 101   1              _send_value(i);
+ 102   1              Lcd_Display_str(0,0,p1);
+ 103   1              delay(1000);
+ 104   1              Lcd_DrawMode();
+ 105   1              for(i=0;i<6000;i++){
+ 106   2                      ReadBMP(SD_Sector);
+ 107   2                      Lcd_DrawPicture(SDPic,i);
+*** WARNING C182 IN LINE 107 OF MAIN.C: pointer to different objects
+ 108   2                      SD_Sector+=64;
+ 109   2                      //delay(50);
+ 110   2              }       
+ 111   1              delay(10);
+ 112   1      //      Lcd_Menu(55,clow_cards);
+ 113   1              //Lcd_Locate(0,1);
+ 114   1              Lcd_changeString("What'sYourName?",name,'A','z');
+ 115   1              Lcd_MessageBox(name,"Oh!A good name!");
+C51 COMPILER V9.00   MAIN                                                                  08/25/2013 12:48:37 PAGE 3   
+
+ 116   1              if(Lcd_Dialog("Are you a girl?"," Yes"," No")){
+ 117   2                      
+ 118   2                              if(!Lcd_Dialog("Let's be Friend?"," OK!"," No")){
+ 119   3                                      Lcd_MessageBox("Your are a good"," guy,Thank you!");
+ 120   3                              }else{
+ 121   3                                      Lcd_MessageBox("Don't be shy~","");
+ 122   3                              }
+ 123   2                      Lcd_changeString("What'sYourAge?",age,'0','9');
+ 124   2              }else{
+ 125   2                      Lcd_MessageBox("Would you ....."," ");
+ 126   2                      Lcd_MessageBox("Would you .....","marry me?");
+ 127   2                      if(!Lcd_Dialog("marry me?"," Yes"," No")){
+ 128   3                              Lcd_MessageBox("I love You!","");       
+ 129   3                      }else{
+ 130   3                              Lcd_MessageBox("No!!!!!!!!","");        
+ 131   3                      }
+ 132   2                              
+ 133   2              }
+ 134   1              Lcd_Dialog("What is Hehe?"," Hehe"," ???");
+ 135   1      
+ 136   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    708    ----
+   CONSTANT SIZE    =    286    ----
+   XDATA SIZE       =   1035    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      15
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

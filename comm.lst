@@ -1,0 +1,52 @@
+C51 COMPILER V9.00   COMM                                                                  08/25/2013 08:37:31 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE COMM
+OBJECT MODULE PLACED IN .\comm.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\C51\BIN\C51.EXE ..\【高能】60s2常见功能的顶级封装\comm.c BROWSE INCDIR(
+                    -..\【高能】60s2常见功能的顶级封装) DEBUG OBJECTEXTEND PRINT(.\comm.lst) OBJECT(.\comm.obj)
+
+line level    source
+
+   1          #include "comm.h"
+   2          void delayus(uint time){
+   3   1              while(time--);
+   4   1      }
+   5          void delay(uint time){
+   6   1              while(time--){
+   7   2                      delayus(1000);
+   8   2              }
+   9   1      }
+  10          #define _SetPriority(IDRL,REG,BIT,VAL) {IDRL=VAL%2;_SetRegBit(REG,BIT,VAL/2);}
+  11          //这个宏专门用于设置优先级寄存器
+  12          //stc12c5a60s2有四个优先级
+  13          void SetInterruptPriority(uchar ID_Interrupt,uchar Priority){
+  14   1              switch(ID_Interrupt){
+  15   2              case IDI_Int0   :_SetPriority(PX0,IPH,0,Priority);break;
+  16   2              case IDI_Timer0 :_SetPriority(PT0,IPH,1,Priority);break;
+  17   2              case IDI_Int1   :_SetPriority(PX1,IPH,2,Priority);break;
+  18   2              case IDI_Timer1 :_SetPriority(PT1,IPH,3,Priority);break;
+  19   2              case IDI_UART1  :_SetPriority(PS,IPH,4,Priority);break;
+  20   2              case IDI_ADC    :_SetPriority(PADC,IPH,5,Priority);break;
+  21   2              case IDI_LVD    :_SetPriority(PLVD,IPH,6,Priority);break;
+  22   2              case IDI_PCA    :_SetPriority(PPCA,IPH,7,Priority);break;
+  23   2      //后面这两个不可按位寻址比较捉急，况且不常用，先不写。
+  24   2      //      case IDI_UART2  :_SetPriority(PS2,IP2H,0,Priority);break;
+  25   2      //      case IDI_SPI    :_SetPriority(PSPI,IP2H,1,Priority);break;
+  26   2              default:break;          
+  27   2              }       
+  28   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    211    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

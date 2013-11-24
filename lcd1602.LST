@@ -1,0 +1,244 @@
+C51 COMPILER V9.00   LCD1602                                                               08/21/2013 15:58:07 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE LCD1602
+OBJECT MODULE PLACED IN lcd1602.OBJ
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\C51\BIN\C51.EXE lcd1602.c BROWSE INCDIR(..\【高能】60s2常见功能的顶级封
+                    -装) DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include "lcd1602.h"
+   2          #include "comm.h"
+   3          #include "serial.h"
+   4          #include "keyBoard.h"
+   5          #define LCD1602_DELAYTIME 10
+   6          #define KEY_ENTER       KEY_1
+   7          #define KEY_CHANGE      KEY_2
+   8          #define KEY_CANCEL      KEY_3
+   9          sbit key1 = P3^4;
+  10          sbit key2 = P3^5;
+  11          void Lcd1602_WriteCommand(uchar com){
+  12   1              Lcd_RS=0;
+  13   1              P0=com;
+  14   1              delayus(LCD1602_DELAYTIME);
+  15   1              Lcd_EN=1;
+  16   1              delayus(LCD1602_DELAYTIME);
+  17   1              Lcd_EN=0;
+  18   1      }
+  19          
+  20          void Lcd1602_WriteData(uchar dat){
+  21   1              Lcd_RS=1;
+  22   1              P0=dat;
+  23   1              delayus(LCD1602_DELAYTIME);
+  24   1              Lcd_EN=1;
+  25   1              delayus(LCD1602_DELAYTIME);
+  26   1              Lcd_EN=0;
+  27   1      }
+  28          uchar Lcd1602_ReadData(){
+  29   1              uchar dat;
+  30   1              Lcd_EN=0;
+  31   1              Lcd_RS=1;
+  32   1              Lcd_RW=1; 
+  33   1              P0=0xff;
+  34   1              //改变到输入时必须先置高电平，不然呵呵了。
+  35   1              Lcd_EN=1;       
+  36   1              delayus(LCD1602_DELAYTIME);
+  37   1              dat=P0;
+  38   1              Lcd_EN=0;
+  39   1              return dat;
+  40   1      }
+  41          void Lcd_Init(){
+  42   1              Lcd_EN=0;
+  43   1              Lcd_RW=0;
+  44   1              Lcd1602_WriteCommand(0x38);
+  45   1              Lcd1602_WriteCommand(0x0c);
+  46   1              Lcd1602_WriteCommand(0x06);
+  47   1              Lcd1602_WriteCommand(0x01);
+  48   1      }
+  49          void Lcd_Clear(){
+  50   1              Lcd1602_WriteCommand(0x01);
+  51   1              delay(10);
+  52   1      }
+  53          void Lcd_Locate(uchar x,uchar y){
+  54   1              Lcd1602_WriteCommand(0x80+0x40*y+x);
+C51 COMPILER V9.00   LCD1602                                                               08/21/2013 15:58:07 PAGE 2   
+
+  55   1      }
+  56          void Lcd_Input_str(uchar *str){
+  57   1              while(*str!='\0'){
+  58   2                      Lcd1602_WriteData(*str++);
+  59   2              }
+  60   1              *str=0;
+  61   1      }
+  62          void Lcd_Display_str(uchar x,uchar y,uchar *str){
+  63   1              Lcd_Locate(x,y);
+  64   1              while(*str!='\0'){
+  65   2                      Lcd1602_WriteData(*str++);
+  66   2              }
+  67   1              *str=0;
+  68   1      }
+  69          void Lcd_Input_long(long num)   //发送整数
+  70          {
+  71   1              
+  72   1              ulong temp;
+  73   1              uint i=0,j; 
+  74   1              if(num<0){Lcd1602_WriteData('-');num=-num;} //处理成正数
+  75   1              temp=num;
+  76   1              do{
+  77   2                      temp=temp/10;
+  78   2                      i++;
+  79   2              }while(temp>0);
+  80   1              while(i>0){
+  81   2                      j=i;
+  82   2                      temp=1;
+  83   2                      while(j>1){j--;temp*=10;}
+  84   2                      Lcd1602_WriteData(num/temp+'0');
+  85   2                      num-=(num/temp)*temp;
+  86   2                      i--;
+  87   2              }
+  88   1      }
+  89          void Lcd_Input_float(float num,uchar precise)   
+  90          //发送浮点数，precise标识精度
+  91          {
+  92   1              long temp;
+  93   1              if(num<0){Lcd1602_WriteData('-');num=-num;} //处理成正数        
+  94   1              if(num>=1){
+  95   2                      temp=(long)num;
+  96   2                      Lcd_Input_long(temp);
+  97   2                      num=num-temp;
+  98   2                      precise--;
+  99   2              }else{
+ 100   2                      Lcd1602_WriteData('0');
+ 101   2              }
+ 102   1              Lcd1602_WriteData('.');
+ 103   1              num=num*10;
+ 104   1              while(precise>0){
+ 105   2                      precise--;
+ 106   2                      temp=(int)num;
+ 107   2                      Lcd1602_WriteData(temp+'0');
+ 108   2                      num=(num-temp)*10;      
+ 109   2              }
+ 110   1      }
+ 111          void Lcd_MessageBox(uchar * text,uchar * text2){
+ 112   1              Lcd_Clear();
+ 113   1              Lcd_Display_str(0,0,text);
+ 114   1              Lcd_Display_str(0,1,text2);
+ 115   1              waitForKey(KEY_ENTER,0);
+ 116   1              Lcd_Clear();
+C51 COMPILER V9.00   LCD1602                                                               08/21/2013 15:58:07 PAGE 3   
+
+ 117   1              delay(50);      
+ 118   1      }
+ 119          bit Lcd_Dialog(uchar * text,uchar * button1_text,uchar * button2_text){
+ 120   1              bit Answer=0;
+ 121   1              Lcd_Clear();
+ 122   1              Lcd_Display_str(0,0,"                ");
+ 123   1              Lcd_Display_str(0,0,text);
+ 124   1              Lcd_Display_str(0,1,"                ");        
+ 125   1              Lcd_Display_str(1,1,button1_text);
+ 126   1              Lcd_Display_str(9,1,button2_text);
+ 127   1              Lcd_Display_str(0,1,">");
+ 128   1              Lcd_Display_str(7,1,"<");
+ 129   1              Lcd_Display_str(8,1," ");
+ 130   1              Lcd_Display_str(15,1," ");      
+ 131   1              while(waitForKey(KEY_CHANGE | KEY_ENTER,0)!=KEY_ENTER){
+ 132   2              //不是Key_enter肯定就是keyL或R
+ 133   2                      Answer=~Answer;
+ 134   2                      if(Answer==0){
+ 135   3                              Lcd_Display_str(0,1,">");
+ 136   3                              Lcd_Display_str(7,1,"<");
+ 137   3                              Lcd_Display_str(8,1," ");
+ 138   3                              Lcd_Display_str(15,1," ");
+ 139   3                      }else{
+ 140   3                              Lcd_Display_str(0,1," ");
+ 141   3                              Lcd_Display_str(7,1," ");
+ 142   3                              Lcd_Display_str(8,1,">");
+ 143   3                              Lcd_Display_str(15,1,"<");                      
+ 144   3                      }       
+ 145   2              }       
+ 146   1              Lcd_Clear();
+ 147   1              delay(50);
+ 148   1              return(Answer);
+ 149   1              
+ 150   1      }
+ 151          uchar Lcd_Menu(uchar item_number,uchar items[10][10]){
+ 152   1              uchar item_select=0;
+ 153   1              uchar i=0;
+ 154   1              uchar x,y;
+ 155   1              Lcd_Clear();
+ 156   1              KEY_Last=KEY_ENTER;
+ 157   1              send_str(items[0]);
+ 158   1              do{
+ 159   2                      if(KEY_Last==KEY_ENTER){
+ 160   3                              item_select++;
+ 161   3                              if(item_select>item_number)item_select=1;
+ 162   3                      }
+ 163   2                      else{item_select--;
+ 164   3                              if(item_select<1)item_select=item_number;
+ 165   3                      }
+ 166   2                      
+ 167   2                      for(i=((item_select-1)/4)*4;i<((item_select+3)/4)*4;i++){
+ 168   3                         x=(i%4)%2*8;
+ 169   3                         y=(i%4)/2;
+ 170   3                              _send_value(i);
+ 171   3                              Lcd_Display_str(x+1,y,"      ");
+ 172   3                              if(i<item_number){
+ 173   4                                      Lcd_Display_str(x+1,y,items[i]);
+ 174   4                              }
+ 175   3                              if(i+1==item_select){
+ 176   4                                      Lcd_Display_str(x,y,">");
+ 177   4                                      Lcd_Display_str(x+7,y,"<");
+ 178   4                              }else{
+C51 COMPILER V9.00   LCD1602                                                               08/21/2013 15:58:07 PAGE 4   
+
+ 179   4                                      Lcd_Display_str(x,y," ");
+ 180   4                                      Lcd_Display_str(x+7,y," ");
+ 181   4                              }       
+ 182   3                      }
+ 183   2              }while(waitForKey(KEY_CANCEL | KEY_CHANGE | KEY_ENTER,0)!=KEY_CHANGE);
+ 184   1              Lcd_Clear();
+ 185   1              delay(50);
+ 186   1              return 0;
+ 187   1      }
+ 188          
+ 189          void Lcd_changeString(uchar * text,uchar * str,uchar lowerChar,uchar upperChar){
+ 190   1      //用lowerChar至UpperChar之间的某个数调整一个字串。
+ 191   1              uchar idx=0;
+ 192   1              Lcd_Clear();
+ 193   1              Lcd_Display_str(0,0,text);
+ 194   1              Lcd_Display_str(0,1,str);                       
+ 195   1              Lcd1602_WriteCommand(0x0f);
+ 196   1              //开启光标闪烁
+ 197   1              while(str[idx]!=0){
+ 198   2                      Lcd_Locate(idx,1);
+ 199   2                      while(waitForKey(KEY_CANCEL | KEY_CHANGE | KEY_ENTER,0)==KEY_CHANGE){
+ 200   3                              str[idx]=str[idx]+1;
+ 201   3                              if(str[idx]>upperChar)str[idx]=lowerChar;       
+ 202   3                              send_str(str);
+ 203   3                              Lcd1602_WriteData(str[idx]);
+ 204   3                              Lcd_Locate(idx,1);
+ 205   3                      }
+ 206   2                      if(KEY_Last==KEY_CANCEL && idx>0)idx--;
+ 207   2                      if(KEY_Last==KEY_ENTER )idx++;
+ 208   2              }
+ 209   1              
+ 210   1              Lcd1602_WriteCommand(0x0c);
+ 211   1              //隐藏光标
+ 212   1              Lcd_Clear();
+ 213   1              delay(50);      
+ 214   1      }       
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1603    ----
+   CONSTANT SIZE    =     36    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      57
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

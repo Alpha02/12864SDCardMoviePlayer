@@ -1,0 +1,493 @@
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE LCD12864
+OBJECT MODULE PLACED IN lcd12864.OBJ
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\C51\BIN\C51.EXE lcd12864.c BROWSE INCDIR(..\¡¾¸ßÄÜ¡¿60s2³£¼û¹¦ÄÜµÄ¶¥¼¶·
+                    -â×°) DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include "lcd12864.h"
+   2          #include "comm.h"
+   3          #include "serial.h"
+   4          #include "keyBoard.h"
+   5          #include <intrins.h>
+   6          #define LCD12864_DELAYTIME 20
+   7          #define KEY_ENTER       KEY_1
+   8          #define KEY_CHANGE      KEY_2
+   9          #define KEY_CANCEL      KEY_3
+  10          sbit key1 = P3^4;
+  11          sbit key2 = P3^5;
+  12          
+  13          void Lcd12864_WriteCommand(uchar com){
+  14   1              Lcd_RS=0;
+  15   1              P0=com;
+  16   1              Lcd_EN=1;
+  17   1              delayus(LCD12864_DELAYTIME);
+  18   1              Lcd_EN=0;
+  19   1              delayus(LCD12864_DELAYTIME);
+  20   1      }
+  21          void Lcd12864_WriteData(uchar dat){
+  22   1              Lcd_RS=1;
+  23   1              P0=dat;
+  24   1              Lcd_EN=1;
+  25   1              delayus(LCD12864_DELAYTIME);
+  26   1              Lcd_EN=0;
+  27   1              delayus(LCD12864_DELAYTIME);
+  28   1      }
+  29          void Lcd12864_WriteData2(uint dat){
+  30   1              Lcd_RS=1;
+  31   1              P0=dat>>8;
+  32   1              Lcd_EN=1;
+  33   1              delayus(LCD12864_DELAYTIME);
+  34   1              Lcd_EN=0;
+  35   1              P0=dat;
+  36   1              delayus(LCD12864_DELAYTIME);
+  37   1              Lcd_EN=1;
+  38   1              delayus(LCD12864_DELAYTIME);
+  39   1              Lcd_EN=0;
+  40   1              delayus(LCD12864_DELAYTIME);
+  41   1      }
+  42          uchar Lcd12864_ReadData(){
+  43   1              uchar dat;
+  44   1              Lcd_EN=0;
+  45   1              Lcd_RS=1;
+  46   1              Lcd_RW=1; 
+  47   1              P0=0xff;
+  48   1              //¸Ä±äµ½ÊäÈëÊ±±ØÐëÏÈÖÃ¸ßµçÆ½£¬²»È»ºÇºÇÁË¡£
+  49   1              Lcd_EN=1;       
+  50   1              delayus(LCD12864_DELAYTIME);
+  51   1              dat=P0;
+  52   1              Lcd_EN=0;
+  53   1              Lcd_RW=0; 
+  54   1              return dat;
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 2   
+
+  55   1      }
+  56          void Lcd_Init(){
+  57   1              Lcd_EN=0;
+  58   1              Lcd_RW=0;
+  59   1              Lcd12864_WriteCommand(0x38);
+  60   1              Lcd12864_WriteCommand(0x0c);
+  61   1              Lcd12864_WriteCommand(0x06);
+  62   1              Lcd12864_WriteCommand(0x01);
+  63   1              delay(20);
+  64   1      }
+  65          void Lcd_Clear(){
+  66   1              Lcd12864_WriteCommand(0x01);
+  67   1              delay(20);
+  68   1      }
+  69          void Lcd_Locate(uchar x,uchar y){
+  70   1              uchar temp_data;
+  71   1              Lcd12864_WriteCommand(0x80+0x08*(y/2)+0x10*(y%2)+x/2);
+  72   1              if(x%2!=0){
+  73   2                      //Lcd12864_ReadData();
+  74   2                      //Lcd12864_ReadData();
+  75   2                      temp_data=Lcd12864_ReadData();  
+  76   2                      Lcd12864_WriteCommand(0x80+0x08*(y/2)+0x10*(y%2)+x/2);
+  77   2                      Lcd12864_WriteData(temp_data);
+  78   2                      //Lcd12864_WriteCommand(0x80+0x10*y+x/2);
+  79   2                      //Lcd12864_WriteData(temp_data);
+  80   2                                      
+  81   2              }
+  82   1              
+  83   1      }
+  84          void Lcd_Input_str(uchar *str){
+  85   1              while(*str!='\0'){
+  86   2                      Lcd12864_WriteData(*str++);
+  87   2              }
+  88   1              *str=0;
+  89   1      }
+  90          void Lcd_Display_str(uchar x,uchar y,uchar *str){
+  91   1              Lcd_Locate(x,y);
+  92   1              while(*str!='\0'){
+  93   2                      Lcd12864_WriteData(*str++);
+  94   2              }
+  95   1              *str=0;
+  96   1      }
+  97          void Lcd_Input_long(long num)   //·¢ËÍÕûÊý
+  98          {
+  99   1              
+ 100   1              ulong temp;
+ 101   1              uint i=0,j; 
+ 102   1              if(num<0){Lcd12864_WriteData('-');num=-num;} //´¦Àí³ÉÕýÊý
+ 103   1              temp=num;
+ 104   1              do{
+ 105   2                      temp=temp/10;
+ 106   2                      i++;
+ 107   2              }while(temp>0);
+ 108   1              while(i>0){
+ 109   2                      j=i;
+ 110   2                      temp=1;
+ 111   2                      while(j>1){j--;temp*=10;}
+ 112   2                      Lcd12864_WriteData(num/temp+'0');
+ 113   2                      num-=(num/temp)*temp;
+ 114   2                      i--;
+ 115   2              }
+ 116   1      }
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 3   
+
+ 117          void Lcd_Input_float(float num,uchar precise)   
+ 118          //·¢ËÍ¸¡µãÊý£¬precise±êÊ¶¾«¶È
+ 119          {
+ 120   1              long temp;
+ 121   1              if(num<0){Lcd12864_WriteData('-');num=-num;} //´¦Àí³ÉÕýÊý       
+ 122   1              if(num>=1){
+ 123   2                      temp=(long)num;
+ 124   2                      Lcd_Input_long(temp);
+ 125   2                      num=num-temp;
+ 126   2                      precise--;
+ 127   2              }else{
+ 128   2                      Lcd12864_WriteData('0');
+ 129   2              }
+ 130   1              Lcd12864_WriteData('.');
+ 131   1              num=num*10;
+ 132   1              while(precise>0){
+ 133   2                      precise--;
+ 134   2                      temp=(int)num;
+ 135   2                      Lcd12864_WriteData(temp+'0');
+ 136   2                      num=(num-temp)*10;      
+ 137   2              }
+ 138   1      }
+ 139          void Lcd_MessageBox(uchar * text,uchar * text2){
+ 140   1              Lcd_Clear();
+ 141   1              Lcd_Display_str(0,0,text);
+ 142   1              Lcd_Display_str(0,1,text2);
+ 143   1              waitForKey(KEY_ENTER,0);
+ 144   1              Lcd_Clear();
+ 145   1              delay(50);      
+ 146   1      }
+ 147          bit Lcd_Dialog(uchar * text,uchar * button1_text,uchar * button2_text){
+ 148   1              bit Answer=0;
+ 149   1              Lcd_Clear();
+ 150   1              Lcd_Display_str(0,0,"                ");
+ 151   1              Lcd_Display_str(0,0,text);
+ 152   1              Lcd_Display_str(0,1,"                ");        
+ 153   1              Lcd_Display_str(1,1,button1_text);
+ 154   1              Lcd_Display_str(9,1,button2_text);
+ 155   1              Lcd_Display_str(0,1,">");
+ 156   1              Lcd_Display_str(7,1,"<");
+ 157   1              Lcd_Display_str(8,1," ");
+ 158   1              Lcd_Display_str(15,1," ");      
+ 159   1              while(waitForKey(KEY_CHANGE | KEY_ENTER,0)!=KEY_ENTER){
+ 160   2              //²»ÊÇKey_enter¿Ï¶¨¾ÍÊÇkeyL»òR
+ 161   2                      Answer=~Answer;
+ 162   2                      if(Answer==0){
+ 163   3                              Lcd_Display_str(0,1,">");
+ 164   3                              Lcd_Display_str(7,1,"<");
+ 165   3                              Lcd_Display_str(8,1," ");
+ 166   3                              Lcd_Display_str(15,1," ");
+ 167   3                      }else{
+ 168   3                              Lcd_Display_str(0,1," ");
+ 169   3                              Lcd_Display_str(7,1," ");
+ 170   3                              Lcd_Display_str(8,1,">");
+ 171   3                              Lcd_Display_str(15,1,"<");                      
+ 172   3                      }       
+ 173   2              }       
+ 174   1              Lcd_Clear();
+ 175   1              delay(50);
+ 176   1              return(Answer);
+ 177   1              
+ 178   1      }
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 4   
+
+ 179          #define Menu_Item 8
+ 180          uchar Lcd_Menu(uchar item_number,uchar items[10][10]){
+ 181   1              uchar item_select=0;
+ 182   1              uchar i=0;
+ 183   1              uchar x,y;
+ 184   1              bit reDraw=1;
+ 185   1              Lcd_Clear();
+ 186   1              KEY_Last=KEY_ENTER;
+ 187   1      //      send_str(items[0]);
+ 188   1              do{
+ 189   2                      if(KEY_Last==KEY_ENTER){
+ 190   3                              item_select++;
+ 191   3                              if(item_select>item_number)item_select=1;
+ 192   3                              if(item_select%Menu_Item==1)reDraw=1;
+ 193   3                      }
+ 194   2                      else{item_select--;
+ 195   3                              if(item_select<1){item_select=item_number;reDraw=1;}
+ 196   3                              if(item_select%Menu_Item==0)reDraw=1;
+ 197   3                      }
+ 198   2                      
+ 199   2                      for(i=((item_select-1)/Menu_Item)*Menu_Item;i<((item_select+(Menu_Item-1))/Menu_Item)*Menu_Item;i++){
+ 200   3                         x=(i%Menu_Item)%2*8;
+ 201   3                         y=(i%Menu_Item)/2;
+ 202   3                         if(reDraw){
+ 203   4                                      Lcd_Display_str(x+1,y,"      ");
+ 204   4                                      if(i<item_number){
+ 205   5                                              Lcd_Display_str(x+1,y,items[i]);
+ 206   5                                      }
+ 207   4                              }
+ 208   3                              if(i+1==item_select){
+ 209   4                                      Lcd_Display_str(x,y,">");
+ 210   4                                      Lcd_Display_str(x+7,y,"<");
+ 211   4                              }else{
+ 212   4                                      Lcd_Display_str(x,y," ");
+ 213   4                                      Lcd_Display_str(x+7,y," ");
+ 214   4                              }       
+ 215   3                      }
+ 216   2                      reDraw=0;
+ 217   2              }while(waitForKey(KEY_CANCEL | KEY_CHANGE | KEY_ENTER,0)!=KEY_CHANGE);
+ 218   1              Lcd_Clear();
+ 219   1              delay(50);
+ 220   1              return 0;
+ 221   1      }
+ 222          
+ 223          void Lcd_changeString(uchar * text,uchar * str,uchar lowerChar,uchar upperChar){
+ 224   1      //ÓÃlowerCharÖÁUpperCharÖ®¼äµÄÄ³¸öÊýµ÷ÕûÒ»¸ö×Ö´®¡£
+ 225   1              uchar idx=0;
+ 226   1              Lcd_Clear();
+ 227   1              Lcd_Display_str(0,0,text);
+ 228   1              for(idx=0;str[idx]!=0;idx++){
+ 229   2                      Lcd_Locate(idx*2,1);            
+ 230   2                      Lcd12864_WriteData(str[idx]);
+ 231   2              }                       
+ 232   1              idx=0;
+ 233   1              Lcd12864_WriteCommand(0x0f);
+ 234   1              //¿ªÆô¹â±êÉÁË¸
+ 235   1              while(str[idx]!=0){
+ 236   2                      Lcd_Locate(idx*2,1);
+ 237   2                      while(waitForKey(KEY_CANCEL | KEY_CHANGE | KEY_ENTER,0)==KEY_CHANGE){
+ 238   3                              str[idx]=str[idx]+1;
+ 239   3                              if(str[idx]>upperChar)str[idx]=lowerChar;       
+ 240   3      //                      send_str(str);
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 5   
+
+ 241   3                              Lcd12864_WriteData(str[idx]);
+ 242   3                              Lcd_Locate(idx*2,1);
+ 243   3                      }
+ 244   2                      if(KEY_Last==KEY_CANCEL && idx>0)idx--;
+ 245   2                      if(KEY_Last==KEY_ENTER )idx++;
+ 246   2              }
+ 247   1              
+ 248   1              Lcd12864_WriteCommand(0x0c);
+ 249   1              //Òþ²Ø¹â±ê
+ 250   1              Lcd_Clear();
+ 251   1              delay(50);      
+ 252   1      }       
+ 253          void Lcd_DrawMode(){
+ 254   1              Lcd_Clear();
+ 255   1              Lcd12864_WriteCommand(0x34);//¿ªÀ©³äÖ¸Áî
+ 256   1              Lcd12864_WriteCommand(0x36);//¿ª»æÍ¼Ö¸Áî
+ 257   1      
+ 258   1      }
+ 259          uchar Lcd_SubLineEn=0;
+ 260          void Lcd_DrawSubLine(uchar * str){
+ 261   1              Lcd12864_WriteCommand(0x32);//»»µ½»ù±¾Ö¸Áî
+ 262   1              //delay(1);
+ 263   1              Lcd_Display_str(0,3,"                ");
+ 264   1              Lcd_Display_str(0,3,str);
+ 265   1              Lcd12864_WriteCommand(0x36);//¿ªÀ©³äÖ¸Áî
+ 266   1              Lcd_SubLineEn=18;       
+ 267   1      }
+ 268          void Lcd_ClearSubLine(){
+ 269   1              Lcd12864_WriteCommand(0x32);//»»µ½»ù±¾Ö¸Áî
+ 270   1              Lcd_Display_str(0,3,"                ");
+ 271   1              Lcd12864_WriteCommand(0x36);//¿ªÀ©³äÖ¸Áî
+ 272   1      }
+ 273          
+ 274          void Lcd_DrawPicture(uchar picture[64][16],uint i){
+ 275   1              char mx,my;
+ 276   1              uchar * Pdat;
+ 277   1              mx=0;
+ 278   1              my=0;
+ 279   1              if(Lcd_SubLineEn>0)Lcd_SubLineEn--;
+ 280   1              if(Lcd_SubLineEn==1)Lcd_ClearSubLine();
+ 281   1      //      _send_value(Lcd_SubLineEn);
+ 282   1              if(0){
+ 283   2      //      if(!(i%2)){
+ 284   2                      switch(i/2){
+ 285   3                              case(0):Lcd_DrawSubLine("ºÇºÇ×ÖÄ»×é");break;
+ 286   3                              case(56):Lcd_DrawSubLine("ÔÌ²ØºÚ°µÁ¦Á¿µÄ");break;
+ 287   3                              case(63):Lcd_DrawSubLine("Ô¿³×°¡");break;
+ 288   3                              case(79):Lcd_DrawSubLine("ÔÚÎÒÃæÇ°ÏÔÊ¾");break;
+ 289   3                              case(85):Lcd_DrawSubLine("ÄãÕæÊµµÄÁ¦Á¿°É");break;
+ 290   3                              case(94):Lcd_DrawSubLine("¸ù¾ÝÆõÔ¼");break;
+ 291   3                              case(102):Lcd_DrawSubLine("Ð¡Ó£ÃüÁîÄã");break;
+ 292   3                              case(113):Lcd_DrawSubLine("Release!!");break;
+ 293   3                              case(206):Lcd_DrawSubLine("·ç£¡");break;
+ 294   3                              case(303):Lcd_DrawSubLine("´óÏó²îµã");break;
+ 295   3                              case(308):Lcd_DrawSubLine("¾ÍÊÜÉËÁËÒ®");break;
+ 296   3                              case(328):Lcd_DrawSubLine("Ã»Ïëµ½ÄÜ¶ªÆð");break;
+ 297   3                              case(334):Lcd_DrawSubLine("ÕâÃ´ÖØµÄ´óÏó");break;
+ 298   3                              case(345):Lcd_DrawSubLine("µ½µ×ÊÇÊ²Ã´ÅÆÄØ");break;
+ 299   3                              case(358):Lcd_DrawSubLine("°¡£¡ÎÒÖªµÀÁË");break;
+ 300   3                              case(370):Lcd_DrawSubLine("ß´Àï¹¾ààß´Àï¹¾àà");break;
+ 301   3                              case(390):Lcd_DrawSubLine("µ«ÊÇ.....");break;
+ 302   3                              case(399):Lcd_DrawSubLine("¿ìµã¾È´óÏó°É£¡");break;
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 6   
+
+ 303   3                              case(456):Lcd_DrawSubLine("µÈÒ»ÏÂ£¡");break;
+ 304   3                              case(472):Lcd_DrawSubLine("ÄãÊÇÁ¦ÅÆ¶Ô°É");break;
+ 305   3                              case(504):Lcd_DrawSubLine("Òª²»Òª¸úÎÒ");break;
+ 306   3                              case(510):Lcd_DrawSubLine("±ÈÒ»±ÈÁ¦Æø£¿");break;
+ 307   3                              case(524):Lcd_DrawSubLine("ÎªÊ²Ã´Òª±ÈÁ¦Æø£¿");break;
+ 308   3                              case(536):Lcd_DrawSubLine("Á¦ÅÆºÜ½¾°Á");break;
+ 309   3                              case(542):Lcd_DrawSubLine("¶ÔÓÚ×Ô¼ºµÄÁ¦Á¿");break;
+ 310   3                              case(560):Lcd_DrawSubLine("Ö¤¾Ý¾ÍÔÚÄÇÀï");break;
+ 311   3                              case(598):Lcd_DrawSubLine("°¡£¡£¡");break;
+ 312   3                              case(607):Lcd_DrawSubLine("Ìø£¡");break;
+ 313   3                              case(625):Lcd_DrawSubLine("Ëü¹ýÀ´ÁË£¡");break;
+ 314   3                              case(679):Lcd_DrawSubLine("Äã¿´£¡");break;
+ 315   3                              case(683):Lcd_DrawSubLine("»¹ºÃÄãÓÃÁËÌøÅÆ");break;
+ 316   3                              case(704):Lcd_DrawSubLine("Ê²Ã´»¹ºÃ²»»¹ºÃ");break;
+ 317   3                              case(712):Lcd_DrawSubLine("µÄ°¡£¡");break;
+ 318   3                              case(715):Lcd_DrawSubLine("Äã»¹²»¿ì¸úËüËµ");break;
+ 319   3                          case(723):Lcd_DrawSubLine("ÓÃÊ²Ã´±ÈÁ¦Æø£¿");break;
+ 320   3                              case(737):Lcd_DrawSubLine("ÒªÔõÃ´¸úËü±È°¡£¿");break;
+ 321   3                              case(757):Lcd_DrawSubLine("Õâ¼Ò»ï¿´ÆðÀ´");break;
+ 322   3                              case(763):Lcd_DrawSubLine("Ó¦¸ÃºÜºÃ½â¾ö°É");break;
+ 323   3                              case(774):Lcd_DrawSubLine("°¡£¡ÓÖÀ´ÁË£¡£¡");break;
+ 324   3                              case(795):Lcd_DrawSubLine("ÎÒÔõÃ´¿ÉÄÜ");break;
+ 325   3                              case(800):Lcd_DrawSubLine("Ó®ËüÂï");break;
+ 326   3                              case(810):Lcd_DrawSubLine("ÄãÔÙ²»Ëµ£¬Ëü»á");break;
+ 327   3                              case(817):Lcd_DrawSubLine("Ò»Ö±×·×ÅÎÒÃÇ°¡");break;
+ 328   3                              case(836):Lcd_DrawSubLine("°Î....°ÎºÓ£¡");break;
+ 329   3                              case(956):Lcd_DrawSubLine("Á¦ÅÆÔ­À´");break;
+ 330   3                              case(960):Lcd_DrawSubLine("ÕâÃ´¿É°®°¡");break;
+ 331   3                              case(973):Lcd_DrawSubLine("Äã±ðÐ¡¿´Ëü");break;
+ 332   3                              case(979):Lcd_DrawSubLine("·ñÔò»á³Ô´ó¿÷àÞ");break;
+ 333   3                              case(1050):Lcd_DrawSubLine("Ð¡¿É");break;
+ 334   3                              case(1059):Lcd_DrawSubLine("¸Ðµ½Î£ÏÕÊ±");break;
+ 335   3                              case(1064):Lcd_DrawSubLine("Äã¾Í·ÅÊÖ°É");break;
+ 336   3                              case(1124):Lcd_DrawSubLine("Ð¡¿É£¡");break;
+ 337   3                              case(1130):Lcd_DrawSubLine("Ð¡Ó££¡ÓÃÅÆÑ½£¡");break;
+ 338   3                              case(1154):Lcd_DrawSubLine("¿ìÑ½£¡ÓÃ·çÅÆ");break;
+ 339   3                              case(1160):Lcd_DrawSubLine("¶Ô¸¶ÄÇ¼Ò»ï£¡");break;
+ 340   3                              case(1174):Lcd_DrawSubLine("ÎÒµÄÊÖÃ»°ì·¨¶¯°¡");break;
+ 341   3                              case(1253):Lcd_DrawSubLine("´óÏó£¡");break;
+ 342   3                              case(1272):Lcd_DrawSubLine("¼ÓÓÍ£¡");break;
+ 343   3                              case(1417):Lcd_DrawSubLine("Ê±£¡");break;
+ 344   3                              case(1671):Lcd_DrawSubLine("¸Ã²»»áÊÇÓ®ÁË°É£¿");break;
+ 345   3                              case(1683):Lcd_DrawSubLine("ºÃÏñÊÇÒ®");break;
+ 346   3                              case(1692):Lcd_DrawSubLine("ÎÒÓ®À²£¡ÎÒÓ®À²£¡");break;
+ 347   3                              case(1714):Lcd_DrawSubLine("Ð»Ð»£¡");break;
+ 348   3                              case(1719):Lcd_DrawSubLine("¶¼ÊÇÒòÎªÄãµÄ°ïÃ¦");break;
+ 349   3                              case(1754):Lcd_DrawSubLine("Ð¡Ó££¡");break;
+ 350   3                              case(1757):Lcd_DrawSubLine("¿ìµã·âÓ¡Ëü°¡");break;
+ 351   3                              case(1798):Lcd_DrawSubLine("»Ö¸´ÄãÔ­À´µÄÑù×Ó");break;
+ 352   3                              
+ 353   3                              case(1814):Lcd_DrawSubLine("¿âÂåÅÆ£¡");break;
+ 354   3                              case(1942):Lcd_DrawSubLine("ÕæÊÇÕÅ");break;
+ 355   3                              case(1946):Lcd_DrawSubLine("°®ÈÇÂé·³µÄÅÆ");break;
+ 356   3                              case(1960):Lcd_DrawSubLine("Äã¸ÉµÃÌ«ºÃÀ²");break;
+ 357   3                              case(1970):Lcd_DrawSubLine("ÎÒ»¹ÒÔÎªÎÒÊäÁËÄØ");break;
+ 358   3                              case(1987):Lcd_DrawSubLine("¸Õ²ÅÕæÎ£ÏÕÄØ");break;
+ 359   3                              case(2014):Lcd_DrawSubLine("²»ÖªµÀÊ÷ÀÁ");break;
+ 360   3                              case(2020):Lcd_DrawSubLine("ÌáÆð¸É¾¢ÁËÃ»");break;
+ 361   3                              case(2038):Lcd_DrawSubLine("Ð¡¿É£¬ÕâÕÅÅÆ£¿");break;
+ 362   3                              case(2060):Lcd_DrawSubLine("µ±È»ÊÇÊ¹ÓÃºó");break;
+ 363   3                              case(2066):Lcd_DrawSubLine("¾Í»áÁ¦´óÎÞÇî");break;
+ 364   3                              case(2090):Lcd_DrawSubLine("Ð¡Ó£");break;
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 7   
+
+ 365   3                              case(2094):Lcd_DrawSubLine("ÎÒÓÐÊÂÏë°ÝÍÐÄã");break;
+ 366   3                              case(2112):Lcd_DrawSubLine("ß×£¿");break;
+ 367   3                              case(2215):Lcd_DrawSubLine("ÖªÊÀ£¡");break;
+ 368   3                              case(2235):Lcd_DrawSubLine("ÄãÔÚ¿´Ê²Ã´£¿");break;
+ 369   3                              case(2248):Lcd_DrawSubLine("Ð¡Ó£");break;
+ 370   3                              case(2258):Lcd_DrawSubLine("ÕâÕÅÕÕÆ¬ÊÇ....");break;
+ 371   3                              case(2270):Lcd_DrawSubLine("Ð»Ð»£¡ÎÒ»áÁôÏÂ");break;
+ 372   3                              case(2277):Lcd_DrawSubLine("×÷Îª¼ÍÄîµÄ");break;
+ 373   3                              case(2285):Lcd_DrawSubLine("Äã²»ÄÜÄÃ¸ø");break;
+ 374   3                              case(2291):Lcd_DrawSubLine("±ðÈË¿´àÞ");break;
+ 375   3                              case(2305):Lcd_DrawSubLine("ºÃ£¡");break;
+ 376   3                              case(2320):Lcd_DrawSubLine("Ôç£¡");break;
+ 377   3                              case(2332):Lcd_DrawSubLine("Ôç°²£¡");break;
+ 378   3                              case(2363):Lcd_DrawSubLine("ÌýËµ×òÌì·¢Éú");break;
+ 379   3                              case(2370):Lcd_DrawSubLine("ºÜ¶àÊÂàÞ");break;
+ 380   3                              case(2378):Lcd_DrawSubLine("ÄãÃÇ²»Òª½ô°É");break;
+ 381   3                              case(2387):Lcd_DrawSubLine("ÊÇ£¡");break;
+ 382   3                              case(2393):Lcd_DrawSubLine("ÄÇÊÇ×òÌìµÄÕÕÆ¬Âð£¿");break;
+ 383   3                              case(2410):Lcd_DrawSubLine("àÅ");break;
+ 384   3                              case(2440):Lcd_DrawSubLine("°¡......");break;
+ 385   3                              case(2453):Lcd_DrawSubLine("ÕâÊÇ......");break;
+ 386   3                              case(2463):Lcd_DrawSubLine("ÔõÃ´°ì......");break;
+ 387   3                              case(2471):Lcd_DrawSubLine("ÎÒµÄÄ§·¨...");break;
+ 388   3                              case(2477):Lcd_DrawSubLine("Ëµ²»¶¨»á´©°ï....");break;
+ 389   3                              case(2488):Lcd_DrawSubLine("Ð¡Ó££¬Ã»Ïëµ½");break;
+ 390   3                              case(2494):Lcd_DrawSubLine("ÄãµÄÁ¦ÆøÕâÃ´´ó°¡");break;
+ 391   3                              //case(2510):Lcd_DrawSubLine("ºÇºÇºÇºÇ");break;
+ 392   3                              case(2523):Lcd_DrawSubLine("ÄÇ..ÄÇÊÇºÏ³ÉÕÕÆ¬");break;
+ 393   3                              case(2538):Lcd_DrawSubLine("ÎÒÏëÒ²ÊÇÄØ");break;
+ 394   3                              case(2553):Lcd_DrawSubLine("Ã»ÓÐÄ§Á¦µÄ»°");break;
+ 395   3                              case(2561):Lcd_DrawSubLine("ÕâÖÖÊÂ¸ù±¾");break;
+ 396   3                              case(2567):Lcd_DrawSubLine("°ì²»µ½°É");break;
+ 397   3                      }
+ 398   2              }
+ 399   1      
+ 400   1              while(my<32){
+ 401   2      
+ 402   2                      Lcd_RS=0;
+ 403   2                      P0=0x80+my;
+ 404   2                      delayus(10);
+ 405   2                      Lcd_EN=1;
+ 406   2                      delayus(10);
+ 407   2                      Lcd_EN=0;
+ 408   2                      P0=0x80+mx;
+ 409   2                      delayus(10);
+ 410   2                      Lcd_EN=1;
+ 411   2                      delayus(10);
+ 412   2                      Lcd_EN=0;
+ 413   2                      Lcd_RS=1;
+ 414   2                      Pdat=picture[63-my];
+ 415   2                      delayus(10);
+ 416   2                      while(mx<16){
+ 417   3                              if(mx==8){
+ 418   4                                      Pdat=picture[31-my];
+ 419   4                              }
+ 420   3                              P0=*(Pdat++);
+ 421   3                              //P0=picture[my+mx/8*32][mx%8*2];
+ 422   3                              delayus(2);
+ 423   3                              Lcd_EN=1;
+ 424   3                              delayus(1);
+ 425   3                              _nop_();
+ 426   3                              _nop_();
+C51 COMPILER V9.00   LCD12864                                                              08/25/2013 12:48:37 PAGE 8   
+
+ 427   3                              _nop_();
+ 428   3                              _nop_();
+ 429   3                              Lcd_EN=0;
+ 430   3                              P0=*(Pdat++);
+ 431   3                              delayus(2);                                     
+ 432   3                              Lcd_EN=1;
+ 433   3                              delayus(1);
+ 434   3                              _nop_();
+ 435   3                              _nop_();
+ 436   3                              _nop_();
+ 437   3                              _nop_();
+ 438   3                              Lcd_EN=0;
+ 439   3                              
+ 440   3                              mx++;
+ 441   3                      //      _send_value((mx%8*2+1));
+ 442   3                              //delay(10);
+ 443   3      
+ 444   3                      }
+ 445   2                      mx=0;
+ 446   2                      
+ 447   2                      my++;
+ 448   2                      //_send_value((my+mx/8*32));
+ 449   2                      //delay(100);
+ 450   2      
+ 451   2              }
+ 452   1              delay(5);
+ 453   1      //      Lcd12864_WriteCommand(0x32);//»»µ½»ù±¾Ö¸Áî
+ 454   1      //      Lcd12864_WriteCommand(0x30);//¹Ø»­Ãæ
+ 455   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2087    ----
+   CONSTANT SIZE    =   1296    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1      75
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       2
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

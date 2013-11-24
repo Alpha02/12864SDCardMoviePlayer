@@ -1,0 +1,126 @@
+C51 COMPILER V9.00   KEYBOARD                                                              08/25/2013 12:44:33 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE KEYBOARD
+OBJECT MODULE PLACED IN .\keyBoard.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\C51\BIN\C51.EXE ..\【高能】60s2常见功能的顶级封装\keyBoard.c BROWSE INC
+                    -DIR(..\【高能】60s2常见功能的顶级封装) DEBUG OBJECTEXTEND PRINT(.\keyBoard.lst) OBJECT(.\keyBoard.obj)
+
+line level    source
+
+   1          //键盘处理，包括基本的按键，键盘扫描，按键中断
+   2          //注意矩阵键盘没法多个键同时检测。
+   3          #include "keyBoard.h"
+   4          #include "serial.h"
+   5          
+   6          //键盘共16个键，用一个uint表示其按键状态
+   7          /*
+   8          1       2       3       4
+   9          5       6       7       8
+  10          9       10      11      12
+  11          13      14      15      16
+  12          */
+  13          sbit keyScan1 = P3^0;
+  14          sbit keyScan2 = P3^1;
+  15          sbit keyScan3 = P3^2;
+  16          sbit keyScan4 = P3^3;
+  17          
+  18          sbit key1 = P3^4;
+  19          sbit key2 = P3^5;
+  20          sbit key3 = P3^6;
+  21          sbit key4 = P3^7;
+  22          uint xdata KEY_Last=0x0000; 
+  23          
+  24          bit keyPressed(uchar key_index){
+  25   1              key_index--;
+  26   1              PORT_KEYBOARD=~(0x01<<(key_index/4));   
+  27   1              if((0x01<<(key_index%4)) & ((~PORT_KEYBOARD)>>4)){
+  28   2                      //列号确认
+  29   2                      return  1;      
+  30   2              }
+  31   1              return 0;               
+  32   1      }
+  33          bit keyDown(uchar key_index){
+  34   1      #define KEY_SMOOTHING 200
+  35   1              uchar smoothing_count=0;
+  36   1              while(keyPressed(key_index)){
+  37   2                      smoothing_count++;
+  38   2      
+  39   2                      if(smoothing_count>KEY_SMOOTHING){
+  40   3                              return 1;       
+  41   3                      }
+  42   2              
+  43   2              }
+  44   1              return 0;
+  45   1      }
+  46          bit keyUp(uchar key_index){
+  47   1              if(!keyPressed(key_index)){
+  48   2                      return 0;
+  49   2              }
+  50   1              while(keyPressed(key_index));
+  51   1              return 1;
+  52   1      }
+  53          bit keyPress(uchar key_index){
+  54   1              if(keyDown(key_index)){if(keyUp(key_index))return 1;}
+C51 COMPILER V9.00   KEYBOARD                                                              08/25/2013 12:44:33 PAGE 2   
+
+  55   1              return 0;
+  56   1      }
+  57          uint keyScan(uint key_state){
+  58   1              uchar i=0;
+  59   1              uint temp_scan=0x0001;
+  60   1              for(i=1;i<=16;i++){
+  61   2                      
+  62   2                      if(key_state & temp_scan){
+  63   3                              if(keyPressed(i)){
+  64   4                                      
+  65   4                              }else{
+  66   4                                      key_state &= (~temp_scan);
+  67   4                              }
+  68   3                      } 
+  69   2                      temp_scan<<=1;
+  70   2                      
+  71   2              }
+  72   1              return key_state;
+  73   1      
+  74   1      }
+  75          uint waitForKey(uint key_state,bit waitForAll){
+  76   1      //0 for anykey
+  77   1              uint temp_state=0;
+  78   1              if(key_state==0){
+  79   2                      while(temp_state==0){
+  80   3                              temp_state=keyScan(key_state);
+  81   3                      }
+  82   2                      
+  83   2              }else{
+  84   2                      if(waitForAll){
+  85   3                              while(temp_state!=key_state){
+  86   4                                      temp_state=keyScan(key_state);
+  87   4                              }
+  88   3                      }else{
+  89   3                              _send_value(temp_state);
+  90   3                              while((temp_state&key_state)==0){
+  91   4                                      temp_state=keyScan(key_state);
+  92   4                                      
+  93   4                              }
+  94   3                      }
+  95   2              }
+  96   1              while(keyScan(key_state)!=0);
+  97   1              //等待键松开；
+  98   1              KEY_Last=temp_state;
+  99   1              return temp_state;
+ 100   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    324    ----
+   CONSTANT SIZE    =     15    ----
+   XDATA SIZE       =      2    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       6
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

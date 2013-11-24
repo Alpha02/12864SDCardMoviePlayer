@@ -1,0 +1,8 @@
+"main.obj",
+".\comm.obj",
+".\serial.obj",
+".\keyBoard.obj",
+"lcd12864.obj",
+".\SD.obj" 
+TO "1602test" 
+RAMSIZE(256) 
